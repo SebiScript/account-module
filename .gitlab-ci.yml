@@ -1,0 +1,79 @@
+variables:
+  MAVEN_OPTS: >-
+    -Dhttps.protocols=TLSv1.2
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+    -Dorg.slf4j.simpleLogger.showDateTime=true
+    -Djava.awt.headless=true
+  MAVEN_CLI_OPTS: >-
+    --batch-mode
+    --errors
+    --fail-at-end
+    --show-version
+    --no-transfer-progress
+    -DinstallAtEnd=true
+    -DdeployAtEnd=true
+
+# This template uses the latest Maven 3 release, e.g., 3.8.6, and OpenJDK 8 (LTS)
+# for verifying and deploying images
+# Maven 3.8.x REQUIRES HTTPS repositories.
+# See https://maven.apache.org/docs/3.8.1/release-notes.html#how-to-fix-when-i-get-a-http-repository-blocked for more.
+image: maven:3-openjdk-17
+
+# Cache downloaded dependencies and plugins between builds.
+# To keep cache across branches add 'key: "$CI_JOB_NAME"'
+# Be aware that `mvn deploy` will install the built jar into this repository. If you notice your cache size
+# increasing, consider adding `-Dmaven.install.skip=true` to `MAVEN_OPTS` or in `.mvn/maven.config`
+cache:
+  paths:
+    - .m2/repository
+
+stages:
+  - clean-compile
+  - test
+  - build
+  - deploy
+
+clean-compile:
+  stage: clean-compile
+  script:
+    - echo $MAVEN_CLI_OPTS
+    - 'mvn $MAVEN_CLI_OPTS clean compile --settings ci_settings.xml'
+  when: on_success
+
+
+# For merge requests do not `deploy` but only run `verify`.
+# See https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html
+verify:
+  stage: test
+  needs: ['clean-compile']
+  script:
+    - 'mvn $MAVEN_CLI_OPTS verify'
+
+
+test:
+  stage: test
+  needs: ['clean-compile', 'verify']
+  script:
+    - 'mvn $MAVEN_CLI_OPTS test'
+  artifacts:
+    untracked: false
+    when: on_success
+    access: all
+    expire_in: 30 days
+    paths:
+      - target/site/jacoco/
+
+build:
+  stage: build
+  script:
+    - echo "Build"
+    - 'mvn $MAVEN_CLI_OPTS clean install'
+
+deploy:jdk17:
+  stage: deploy
+  script:
+    - if [ ! -f ci_settings.xml ]; then
+      echo "CI settings missing! Please see the documentation to generate one.";
+      exit 1;
+      fi
+    - 'mvn $MAVEN_CLI_OPTS deploy --settings ci_settings.xml'

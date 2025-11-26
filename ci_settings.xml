@@ -1,0 +1,27 @@
+<settings>
+    <servers>
+        <server>
+            <id>commons-module-repo</id>
+            <configuration>
+                <httpHeaders>
+                    <property>
+                        <name>Private-Token</name>
+                        <!-- This value should be kept secret -->
+                        <value>glpat-p2cxn6QVIss9pG4Pduf4Nm86MQp1Oml3Ynd4Cw.01.121ohswem</value>
+                    </property>
+                </httpHeaders>
+            </configuration>
+        </server>
+        <server>
+            <id>gitlab-maven</id>
+            <configuration>
+                <httpHeaders>
+                    <property>
+                        <name>Job-Token</name>
+                        <value>${CI_JOB_TOKEN}</value>
+                    </property>
+                </httpHeaders>
+            </configuration>
+        </server>
+    </servers>
+</settings>
